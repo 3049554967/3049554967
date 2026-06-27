@@ -1,0 +1,394 @@
+// 对应教材：曲维光《C++面向对象程序设计》第2、3、7章
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <iomanip>
+using namespace std;
+
+// 第2章 类与封装：Book图书类，所有属性私有，提供public访问接口
+class Book
+{
+private:
+    // 私有成员变量（教材2.3节 访问控制）
+    string bookId;     // 图书编号
+    string bookName;   // 书名
+    string author;     // 作者
+    int stockTotal;    // 总馆藏
+    int stockBorrow;   // 已借出数量
+public:
+    // 构造函数（教材2.4节）
+    Book();
+    Book(string id, string name, string aut, int total);
+    // 析构函数（教材2.5节）
+    ~Book();
+
+    // Get/Set成员函数，封装私有属性（教材2.3封装思想）
+    void setId(string id);
+    string getId();
+    void setName(string name);
+    string getName();
+    void setAuthor(string aut);
+    string getAuthor();
+    void setTotal(int num);
+    int getTotal();
+    void setBorrow(int num);
+    int getBorrow();
+    // 获取可借数量
+    int getCanBorrow();
+};
+
+// 无参构造
+Book::Book()
+{
+    bookId = "";
+    bookName = "";
+    author = "";
+    stockTotal = 0;
+    stockBorrow = 0;
+}
+// 有参构造
+Book::Book(string id, string name, string aut, int total)
+{
+    bookId = id;
+    bookName = name;
+    author = aut;
+    stockTotal = total;
+    stockBorrow = 0;
+}
+// 析构函数
+Book::~Book(){}
+
+// 成员函数实现
+void Book::setId(string id){ bookId = id; }
+string Book::getId(){ return bookId; }
+void Book::setName(string name){ bookName = name; }
+string Book::getName(){ return bookName; }
+void Book::setAuthor(string aut){ author = aut; }
+string Book::getAuthor(){ return author; }
+void Book::setTotal(int num){ stockTotal = num; }
+int Book::getTotal(){ return stockTotal; }
+void Book::setBorrow(int num){ stockBorrow = num; }
+int Book::getBorrow(){ return stockBorrow; }
+int Book::getCanBorrow(){ return stockTotal - stockBorrow; }
+
+// 图书管理操作类，封装全部业务（教材3.2 对象数组vector）
+class BookManage
+{
+private:
+    vector<Book> bookList; // 对象数组存储所有图书
+    string filePath;       // 数据文件路径
+public:
+    BookManage();
+    // 第7章 文件流：加载文件、保存文件
+    void loadData();
+    void saveData();
+    // 图书基础操作
+    void addBook();
+    void delBook();
+    void modifyBook();
+    // 查询功能
+    void searchById();
+    void searchByKey();
+    void showAllBook();
+    // 借阅业务
+    void borrowBook();
+    void returnBook();
+    // 统计功能
+    void showStatistics();
+    // 打印表格表头
+    void printHead();
+    // 打印单本图书信息
+    void printSingle(Book b);
+};
+
+BookManage::BookManage()
+{
+    filePath = "book_data.txt";
+}
+
+// 7.1 ifstream读取文本文件
+void BookManage::loadData()
+{
+    ifstream inFile(filePath);
+    if (!inFile.is_open())
+    {
+        cout << "暂无历史图书数据文件，新建数据库" << endl;
+        return;
+    }
+    string id, name, aut;
+    int total, borrow;
+    while (inFile >> id >> name >> aut >> total >> borrow)
+    {
+        Book temp(id, name, aut, total);
+        temp.setBorrow(borrow);
+        bookList.push_back(temp);
+    }
+    inFile.close();
+}
+
+// 7.1 ofstream写入文本文件
+void BookManage::saveData()
+{
+    ofstream outFile(filePath);
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        Book b = bookList[i];
+        outFile << b.getId() << " " << b.getName() << " "
+                << b.getAuthor() << " " << b.getTotal() << " "
+                << b.getBorrow() << endl;
+    }
+    outFile.close();
+    cout << "数据已保存至文件！" << endl;
+}
+
+// 新增图书
+void BookManage::addBook()
+{
+    string id, name, aut;
+    int total;
+    cout << "请输入图书编号：";
+    cin >> id;
+    // 查重校验
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        if (bookList[i].getId() == id)
+        {
+            cout << "错误：该编号图书已存在！" << endl;
+            return;
+        }
+    }
+    cout << "请输入图书名称：";
+    cin >> name;
+    cout << "请输入作者：";
+    cin >> aut;
+    cout << "请输入馆藏总数量：";
+    cin >> total;
+    if (total <= 0)
+    {
+        cout << "馆藏数量必须大于0，录入失败！" << endl;
+        return;
+    }
+    Book newBook(id, name, aut, total);
+    bookList.push_back(newBook);
+    cout << "图书新增成功！" << endl;
+}
+
+// 删除图书
+void BookManage::delBook()
+{
+    string id;
+    cout << "输入要删除的图书编号：";
+    cin >> id;
+    for (auto it = bookList.begin(); it != bookList.end(); it++)
+    {
+        if (it->getId() == id)
+        {
+            bookList.erase(it);
+            cout << "删除完成！" << endl;
+            return;
+        }
+    }
+    cout << "未找到对应图书！" << endl;
+}
+
+// 修改图书信息
+void BookManage::modifyBook()
+{
+    string id;
+    cout << "输入待修改图书编号：";
+    cin >> id;
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        if (bookList[i].getId() == id)
+        {
+            string newName, newAut;
+            int newTotal;
+            cout << "输入新书名："; cin >> newName;
+            cout << "输入新作者："; cin >> newAut;
+            cout << "输入新馆藏数："; cin >> newTotal;
+            bookList[i].setName(newName);
+            bookList[i].setAuthor(newAut);
+            bookList[i].setTotal(newTotal);
+            cout << "信息修改成功！" << endl;
+            return;
+        }
+    }
+    cout << "无此图书！" << endl;
+}
+
+// 按编号精确查询
+void BookManage::searchById()
+{
+    string id;
+    cout << "输入查询编号：";
+    cin >> id;
+    bool findFlag = false;
+    printHead();
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        if (bookList[i].getId() == id)
+        {
+            printSingle(bookList[i]);
+            findFlag = true;
+        }
+    }
+    if (!findFlag) cout << "无匹配图书" << endl;
+}
+
+// 按书名/作者模糊查询
+void BookManage::searchByKey()
+{
+    string key;
+    cout << "输入书名/作者关键字：";
+    cin >> key;
+    bool findFlag = false;
+    printHead();
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        Book b = bookList[i];
+        if (b.getName().find(key) != string::npos || b.getAuthor().find(key) != string::npos)
+        {
+            printSingle(b);
+            findFlag = true;
+        }
+    }
+    if (!findFlag) cout << "无匹配图书" << endl;
+}
+
+// 展示全部图书
+void BookManage::showAllBook()
+{
+    printHead();
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        printSingle(bookList[i]);
+    }
+}
+
+// 借阅图书
+void BookManage::borrowBook()
+{
+    string id;
+    cout << "输入借阅图书编号：";
+    cin >> id;
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        if (bookList[i].getId() == id)
+        {
+            if (bookList[i].getCanBorrow() <= 0)
+            {
+                cout << "库存不足，无法借阅！" << endl;
+                return;
+            }
+            bookList[i].setBorrow(bookList[i].getBorrow() + 1);
+            cout << "借阅成功！" << endl;
+            return;
+        }
+    }
+    cout << "图书不存在！" << endl;
+}
+
+// 归还图书
+void BookManage::returnBook()
+{
+    string id;
+    cout << "输入归还图书编号：";
+    cin >> id;
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        if (bookList[i].getId() == id)
+        {
+            if (bookList[i].getBorrow() <= 0)
+            {
+                cout << "该图书未借出，无需归还！" << endl;
+                return;
+            }
+            bookList[i].setBorrow(bookList[i].getBorrow() - 1);
+            cout << "归还完成！" << endl;
+            return;
+        }
+    }
+    cout << "图书不存在！" << endl;
+}
+
+// 数据统计
+void BookManage::showStatistics()
+{
+    int allTotal = 0, allBorrow = 0;
+    for (int i = 0; i < bookList.size(); i++)
+    {
+        allTotal += bookList[i].getTotal();
+        allBorrow += bookList[i].getBorrow();
+    }
+    cout << "\n====图书统计信息====" << endl;
+    cout << "馆藏总册数：" << allTotal << endl;
+    cout << "当前借出册数：" << allBorrow << endl;
+    cout << "可借阅册数：" << allTotal - allBorrow << endl;
+}
+
+// 打印表头
+void BookManage::printHead()
+{
+    cout << left << setw(10) << "图书编号"
+         << setw(12) << "书名"
+         << setw(10) << "作者"
+         << setw(8) << "总馆藏"
+         << setw(8) << "已借出"
+         << setw(8) << "可借阅" << endl;
+}
+
+// 打印单条图书信息
+void BookManage::printSingle(Book b)
+{
+    cout << left << setw(10) << b.getId()
+         << setw(12) << b.getName()
+         << setw(10) << b.getAuthor()
+         << setw(8) << b.getTotal()
+         << setw(8) << b.getBorrow()
+         << setw(8) << b.getCanBorrow() << endl;
+}
+
+// 系统菜单函数
+void printMenu()
+{
+    cout << "\n====教材示例-图书管理系统====" << endl;
+    cout << "1.新增图书  2.删除图书  3.修改图书信息" << endl;
+    cout << "4.编号查询  5.关键字查询 6.借阅图书" << endl;
+    cout << "7.归还图书  8.全部图书  9.数据统计" << endl;
+    cout << "0.保存并退出程序" << endl;
+    cout << "=============================" << endl;
+    cout << "请输入功能序号：";
+}
+
+// 主函数程序入口
+int main()
+{
+    BookManage bm;
+    bm.loadData(); // 程序启动读取文件（教材7章）
+    int op;
+    while (true)
+    {
+        printMenu();
+        cin >> op;
+        switch (op)
+        {
+            case 1: bm.addBook(); break;
+            case 2: bm.delBook(); break;
+            case 3: bm.modifyBook(); break;
+            case 4: bm.searchById(); break;
+            case 5: bm.searchByKey(); break;
+            case 6: bm.borrowBook(); break;
+            case 7: bm.returnBook(); break;
+            case 8: bm.showAllBook(); break;
+            case 9: bm.showStatistics(); break;
+            case 0:
+                bm.saveData();
+                cout << "程序正常退出" << endl;
+                return 0;
+            default:
+                cout << "输入序号错误，请重新输入！" << endl;
+        }
+    }
+    return 0;
+}
